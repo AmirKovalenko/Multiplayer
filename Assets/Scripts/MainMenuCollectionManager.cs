@@ -10,10 +10,17 @@ public class MainMenuConnectionManager : MonoBehaviourPunCallbacks
 {
     private const string LOBBY_DEFAULT_NAME = "OurCoolLobby";
     private const string ROOM_DEFAULT_NAME = "OurCoolRoom";
+    private const string CURRENT_ROOM_NUMBER_OF_PLAYERS_STRING = "{0} \\ {1} Players";
+    private const string GameSceneName = "Game Scene";
 
     [SerializeField] private TextMeshProUGUI debugPhotonText;
     [SerializeField] private TMP_InputField roomNameInputField;
     [SerializeField] private Button[] joinRoomButtons;
+
+    [Header("Current Room Info")]
+    [SerializeField] private GameObject currentRoomInfoPanel;
+    [SerializeField] private TextMeshProUGUI currentRoomPlayersNumber;
+    [SerializeField] private Button startGameButton;
 
     public void Connect()
     {
@@ -99,6 +106,14 @@ public class MainMenuConnectionManager : MonoBehaviourPunCallbacks
 
     }
 
+    public void StartGame()
+    {
+        if (PhotonNetwork.IsMasterClient)
+        {
+            PhotonNetwork.LoadLevel(GameSceneName);
+        }
+    }
+
 
     public override void OnRoomListUpdate(List<RoomInfo> roomList)
     {
@@ -126,4 +141,22 @@ public class MainMenuConnectionManager : MonoBehaviourPunCallbacks
             joinRoomButton.interactable = active;
         }
     }
+
+    private void RefreshCurrentRoomInfo()
+    {
+        if (PhotonNetwork.CurrentRoom != null)
+        {
+            currentRoomInfoPanel.SetActive(true);
+            currentRoomPlayersNumber.SetText(string.Format(CURRENT_ROOM_NUMBER_OF_PLAYERS_STRING,
+                PhotonNetwork.CurrentRoom.PlayerCount, PhotonNetwork.CurrentRoom.MaxPlayers));
+
+            startGameButton.gameObject.SetActive(PhotonNetwork.IsMasterClient);
+            startGameButton.interactable = PhotonNetwork.CurrentRoom.PlayerCount >= 2;
+        }
+        else
+        {
+            currentRoomInfoPanel.SetActive(false);
+        }
+    }
+
 }
