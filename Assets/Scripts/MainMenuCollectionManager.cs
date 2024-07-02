@@ -1,21 +1,29 @@
 using System;
 using System.Collections.Generic;
+using System.Net.Mime;
 using Photon.Pun;
 using Photon.Realtime;
 using TMPro;
 using UnityEngine;
 using UnityEngine.UI;
 
+
 public class MainMenuConnectionManager : MonoBehaviourPunCallbacks
 {
     private const string LOBBY_DEFAULT_NAME = "OurCoolLobby";
     private const string ROOM_DEFAULT_NAME = "OurCoolRoom";
+
     private const string CURRENT_ROOM_NUMBER_OF_PLAYERS_STRING = "{0} \\ {1} Players";
     private const string GameSceneName = "Game Scene";
 
+    [SerializeField] private bool connectOnStart = true;
+
     [SerializeField] private TextMeshProUGUI debugPhotonText;
+
     [SerializeField] private TMP_InputField roomNameInputField;
+
     [SerializeField] private Button[] joinRoomButtons;
+    [SerializeField] private Button connectButton;
 
     [Header("Current Room Info")]
     [SerializeField] private GameObject currentRoomInfoPanel;
@@ -24,6 +32,7 @@ public class MainMenuConnectionManager : MonoBehaviourPunCallbacks
 
     public void Connect()
     {
+        connectButton.interactable = false;
         PhotonNetwork.ConnectUsingSettings();
     }
 
@@ -31,29 +40,35 @@ public class MainMenuConnectionManager : MonoBehaviourPunCallbacks
     {
         Debug.Log("We successfuly connected to Photon");
         base.OnConnectedToMaster();
-        ToggleJoinedRoomButtonsState(true);
+        ToggleJoinRoomButtonsState(true);
     }
 
     public override void OnDisconnected(DisconnectCause cause)
     {
         base.OnDisconnected(cause);
-        //cause == DisconnectCause. 
+        connectButton.interactable = true;
     }
 
     public void CreateRoom()
     {
         RoomOptions roomOptions = new RoomOptions()
         {
-            MaxPlayers = 4
+            MaxPlayers = 4,
         };
         PhotonNetwork.CreateRoom("MyRoom", roomOptions);
-        ToggleJoinedRoomButtonsState(false);
+        ToggleJoinRoomButtonsState(false);
     }
 
     public override void OnCreatedRoom()
     {
         base.OnCreatedRoom();
         Debug.Log("Room created successfully!");
+    }
+
+    public override void OnCreateRoomFailed(short returnCode, string message)
+    {
+        base.OnCreateRoomFailed(returnCode, message);
+        ToggleJoinRoomButtonsState(true);
     }
 
     public void JoinLobby()
@@ -70,50 +85,47 @@ public class MainMenuConnectionManager : MonoBehaviourPunCallbacks
     public void JoinRandomRoom()
     {
         PhotonNetwork.JoinRandomRoom();
-        ToggleJoinedRoomButtonsState(false);
+        ToggleJoinRoomButtonsState(false);
     }
 
     public void JoinRoomByName()
     {
         PhotonNetwork.JoinRoom(roomNameInputField.text);
-        ToggleJoinedRoomButtonsState(false);
+        ToggleJoinRoomButtonsState(false);
     }
+
     public void JoinOrCreateRoom()
     {
-        PhotonNetwork.JoinOrCreateRoom(roomNameInputField.text, roomOptions: null, typedLobby: null);
-        ToggleJoinedRoomButtonsState(false);
+        PhotonNetwork.JoinOrCreateRoom(roomNameInputField.text, null, null);
+        ToggleJoinRoomButtonsState(false);
+    }
 
+    public override void OnLeftRoom()
+    {
+        base.OnLeftRoom();
+        RefreshCurrentRoomInfo();
+        ToggleJoinRoomButtonsState(false);
     }
 
     public override void OnJoinedRoom()
     {
         base.OnJoinedRoom();
+        RefreshCurrentRoomInfo();
         Debug.Log("We successfully joined the room " + PhotonNetwork.CurrentRoom);
     }
 
     public override void OnJoinRoomFailed(short returnCode, string message)
     {
         base.OnJoinRoomFailed(returnCode, message);
-        Debug.LogError($"failed to join room because {message} return code is {returnCode}");
-        ToggleJoinedRoomButtonsState(true);
-
+        Debug.LogError($"We couldn't join the room because {message} return code is {returnCode}");
+        ToggleJoinRoomButtonsState(true);
     }
 
     public override void OnJoinRandomFailed(short returnCode, string message)
     {
         base.OnJoinRandomFailed(returnCode, message);
-        ToggleJoinedRoomButtonsState(true);
-
+        ToggleJoinRoomButtonsState(true);
     }
-
-    public void StartGame()
-    {
-        if (PhotonNetwork.IsMasterClient)
-        {
-            PhotonNetwork.LoadLevel(GameSceneName);
-        }
-    }
-
 
     public override void OnRoomListUpdate(List<RoomInfo> roomList)
     {
@@ -124,9 +136,33 @@ public class MainMenuConnectionManager : MonoBehaviourPunCallbacks
         }
     }
 
+    public override void OnPlayerEnteredRoom(Player newPlayer)
+    {
+        base.OnPlayerEnteredRoom(newPlayer);
+        RefreshCurrentRoomInfo();
+    }
+
+    public override void OnPlayerLeftRoom(Player otherPlayer)
+    {
+        base.OnPlayerLeftRoom(otherPlayer);
+        RefreshCurrentRoomInfo();
+    }
+
+    private void StartGame()
+    {
+        if (PhotonNetwork.IsMasterClient)
+        {
+            PhotonNetwork.LoadLevel(GameSceneName);
+        }
+    }
+
     private void Start()
     {
-        ToggleJoinedRoomButtonsState(false);        
+        ToggleJoinRoomButtonsState(false);
+        PhotonNetwork.AutomaticallySyncScene = true;
+        PhotonNetwork.NickName = "MyName";
+        if (connectOnStart)
+            Connect();
     }
 
     private void Update()
@@ -134,7 +170,7 @@ public class MainMenuConnectionManager : MonoBehaviourPunCallbacks
         debugPhotonText.text = PhotonNetwork.NetworkClientState.ToString();
     }
 
-    private void ToggleJoinedRoomButtonsState(bool active)
+    private void ToggleJoinRoomButtonsState(bool active)
     {
         foreach (Button joinRoomButton in joinRoomButtons)
         {
@@ -144,7 +180,7 @@ public class MainMenuConnectionManager : MonoBehaviourPunCallbacks
 
     private void RefreshCurrentRoomInfo()
     {
-        if (PhotonNetwork.CurrentRoom != null)
+        if (PhotonNetwork.InRoom)
         {
             currentRoomInfoPanel.SetActive(true);
             currentRoomPlayersNumber.SetText(string.Format(CURRENT_ROOM_NUMBER_OF_PLAYERS_STRING,
@@ -158,5 +194,4 @@ public class MainMenuConnectionManager : MonoBehaviourPunCallbacks
             currentRoomInfoPanel.SetActive(false);
         }
     }
-
 }

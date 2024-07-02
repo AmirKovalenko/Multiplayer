@@ -147,12 +147,14 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 4e24fd043e08cc348b803c4f48a909d7, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
+  connectOnStart: 1
   debugPhotonText: {fileID: 538803064}
   roomNameInputField: {fileID: 1440233169}
   joinRoomButtons:
   - {fileID: 193313465}
   - {fileID: 1904335324}
   - {fileID: 188303336}
+  connectButton: {fileID: 1957398075}
   currentRoomInfoPanel: {fileID: 1353177868}
   currentRoomPlayersNumber: {fileID: 1656965775}
   startGameButton: {fileID: 1353177870}
